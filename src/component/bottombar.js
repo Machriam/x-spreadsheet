@@ -4,8 +4,7 @@ import { cssPrefix } from '../config';
 import Icon from './icon';
 import FormInput from './form_input';
 import Dropdown from './dropdown';
-// Record: temp not used
-// import { xtoast } from './message';
+import { xtoast } from './message';
 import { tf } from '../locale/locale';
 
 class DropdownMore extends Dropdown {
@@ -91,7 +90,11 @@ export default class Bottombar {
       this.menuEl = h('ul', `${cssPrefix}-menu`).child(
         h('li', '').children(
           new Icon('add').on('click', () => {
-            addFunc();
+            if (this.dataNames.length < 10) {
+              addFunc();
+            } else {
+              xtoast('tip', 'it less than or equal to 10');
+            }
           }),
           h('span', '').child(this.moreEl),
         ),

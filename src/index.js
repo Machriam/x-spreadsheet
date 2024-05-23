@@ -11,13 +11,13 @@ import './index.less';
 class Spreadsheet {
   constructor(selectors, options = {}) {
     let targetEl = selectors;
-    this.options = { showBottomBar: true, ...options };
+    this.options = options;
     this.sheetIndex = 1;
     this.datas = [];
     if (typeof selectors === 'string') {
       targetEl = document.querySelector(selectors);
     }
-    this.bottombar = this.options.showBottomBar ? new Bottombar(() => {
+    this.bottombar = new Bottombar(() => {
       const d = this.addSheet();
       this.sheet.resetData(d);
     }, (index) => {
@@ -27,16 +27,14 @@ class Spreadsheet {
       this.deleteSheet();
     }, (index, value) => {
       this.datas[index].name = value;
-    }) : null;
+    });
     this.data = this.addSheet();
     const rootEl = h('div', `${cssPrefix}`)
       .on('contextmenu', evt => evt.preventDefault());
     // create canvas element
     targetEl.appendChild(rootEl.el);
     this.sheet = new Sheet(rootEl, this.data);
-    if (this.bottombar !== null) {
-      rootEl.child(this.bottombar.el);
-    }
+    rootEl.child(this.bottombar.el);
   }
 
   addSheet(name, active = true) {
@@ -47,16 +45,12 @@ class Spreadsheet {
     };
     this.datas.push(d);
     // console.log('d:', n, d, this.datas);
-    if (this.bottombar !== null) {
-      this.bottombar.addItem(n, active);
-    }
+    this.bottombar.addItem(n, active);
     this.sheetIndex += 1;
     return d;
   }
 
   deleteSheet() {
-    if (this.bottombar === null) return;
-
     const [oldIndex, nindex] = this.bottombar.deleteItem();
     if (oldIndex >= 0) {
       this.datas.splice(oldIndex, 1);
@@ -64,11 +58,13 @@ class Spreadsheet {
     }
   }
 
+  getParsedData(cellText) {
+    return this.sheet.table.getParsedData(cellText);
+  }
+
   loadData(data) {
     const ds = Array.isArray(data) ? data : [data];
-    if (this.bottombar !== null) {
-      this.bottombar.clear();
-    }
+    this.bottombar.clear();
     this.datas = [];
     if (ds.length > 0) {
       for (let i = 0; i < ds.length; i += 1) {

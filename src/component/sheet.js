@@ -1,11 +1,7 @@
 /* global window */
 import { h } from './element';
-import {
-  bind,
-  mouseMoveUp,
-  bindTouch,
-  createEventEmitter,
-} from './event';
+import { bind, mouseMoveUp, bindTouch } from './event';
+import { t } from '../locale/locale';
 import Resizer from './resizer';
 import Scrollbar from './scrollbar';
 import Selector from './selector';
@@ -18,7 +14,8 @@ import ModalValidation from './modal_validation';
 import SortFilter from './sort_filter';
 import { xtoast } from './message';
 import { cssPrefix } from '../config';
-import { formulas } from '../core/formula';
+
+import { SUPPORTED_FORMULAS } from 'hot-formula-parser';
 
 /**
  * @desc throttle fn
@@ -91,7 +88,7 @@ function selectorSet(multiple, ri, ci, indexesUpdated = true, moving = false) {
 // direction: left | right | up | down | row-first | row-last | col-first | col-last
 function selectorMove(multiple, direction) {
   const {
-    selector, data,
+    selector, data
   } = this;
   const { rows, cols } = data;
   let [ri, ci] = selector.indexes;
@@ -171,76 +168,74 @@ function overlayerMousemove(evt) {
   }
 }
 
-// let scrollThreshold = 15;
+const scrollTimes = 10;
 function overlayerMousescroll(evt) {
-  // scrollThreshold -= 1;
-  // if (scrollThreshold > 0) return;
-  // scrollThreshold = 15;
+  for (let i = 0; i < scrollTimes; i++) {
+    const { verticalScrollbar, horizontalScrollbar, data } = this;
+    const { top } = verticalScrollbar.scroll();
+    const { left } = horizontalScrollbar.scroll();
+    // console.log('evt:::', evt.wheelDelta, evt.detail * 40);
 
-  const { verticalScrollbar, horizontalScrollbar, data } = this;
-  const { top } = verticalScrollbar.scroll();
-  const { left } = horizontalScrollbar.scroll();
-  // console.log('evt:::', evt.wheelDelta, evt.detail * 40);
+    const { rows, cols } = data;
 
-  const { rows, cols } = data;
+    // deltaY for vertical delta
+    const { deltaY, deltaX } = evt;
+    const loopValue = (ii, vFunc) => {
+      let i = ii;
+      let v = 0;
+      do {
+        v = vFunc(i);
+        i += 1;
+      } while (v <= 0);
+      return v;
+    };
+    // console.log('deltaX', deltaX, 'evt.detail', evt.detail);
+    // if (evt.detail) deltaY = evt.detail * 40;
+    const moveY = (vertical) => {
+      if (vertical > 0) {
+        // up
+        const ri = data.scroll.ri + 1;
+        if (ri < rows.len) {
+          const rh = loopValue(ri, i => rows.getHeight(i));
+          verticalScrollbar.move({ top: top + rh - 1 });
+        }
+      } else {
+        // down
+        const ri = data.scroll.ri - 1;
+        if (ri >= 0) {
+          const rh = loopValue(ri, i => rows.getHeight(i));
+          verticalScrollbar.move({ top: ri === 0 ? 0 : top - rh });
+        }
+      }
+    };
 
-  // deltaY for vertical delta
-  const { deltaY, deltaX } = evt;
-  const loopValue = (ii, vFunc) => {
-    let i = ii;
-    let v = 0;
-    do {
-      v = vFunc(i);
-      i += 1;
-    } while (v <= 0);
-    return v;
-  };
-  // console.log('deltaX', deltaX, 'evt.detail', evt.detail);
-  // if (evt.detail) deltaY = evt.detail * 40;
-  const moveY = (vertical) => {
-    if (vertical > 0) {
-      // up
-      const ri = data.scroll.ri + 1;
-      if (ri < rows.len) {
-        const rh = loopValue(ri, i => rows.getHeight(i));
-        verticalScrollbar.move({ top: top + rh - 1 });
+    // deltaX for Mac horizontal scroll
+    const moveX = (horizontal) => {
+      if (horizontal > 0) {
+        // left
+        const ci = data.scroll.ci + 1;
+        if (ci < cols.len) {
+          const cw = loopValue(ci, i => cols.getWidth(i));
+          horizontalScrollbar.move({ left: left + cw - 1 });
+        }
+      } else {
+        // right
+        const ci = data.scroll.ci - 1;
+        if (ci >= 0) {
+          const cw = loopValue(ci, i => cols.getWidth(i));
+          horizontalScrollbar.move({ left: ci === 0 ? 0 : left - cw });
+        }
       }
-    } else {
-      // down
-      const ri = data.scroll.ri - 1;
-      if (ri >= 0) {
-        const rh = loopValue(ri, i => rows.getHeight(i));
-        verticalScrollbar.move({ top: ri === 0 ? 0 : top - rh });
-      }
-    }
-  };
-
-  // deltaX for Mac horizontal scroll
-  const moveX = (horizontal) => {
-    if (horizontal > 0) {
-      // left
-      const ci = data.scroll.ci + 1;
-      if (ci < cols.len) {
-        const cw = loopValue(ci, i => cols.getWidth(i));
-        horizontalScrollbar.move({ left: left + cw - 1 });
-      }
-    } else {
-      // right
-      const ci = data.scroll.ci - 1;
-      if (ci >= 0) {
-        const cw = loopValue(ci, i => cols.getWidth(i));
-        horizontalScrollbar.move({ left: ci === 0 ? 0 : left - cw });
-      }
-    }
-  };
-  const tempY = Math.abs(deltaY);
-  const tempX = Math.abs(deltaX);
-  const temp = Math.max(tempY, tempX);
-  // console.log('event:', evt);
-  // detail for windows/mac firefox vertical scroll
-  if (/Firefox/i.test(window.navigator.userAgent)) throttle(moveY(evt.detail), 50);
-  if (temp === tempX) throttle(moveX(deltaX), 50);
-  if (temp === tempY) throttle(moveY(deltaY), 50);
+    };
+    const tempY = Math.abs(deltaY);
+    const tempX = Math.abs(deltaX);
+    const temp = Math.max(tempY, tempX);
+    // console.log('event:', evt);
+    // detail for windows/mac firefox vertical scroll
+    if (/Firefox/i.test(window.navigator.userAgent)) throttle(moveY(evt.detail), 50);
+    if (temp === tempX) throttle(moveX(deltaX), 50);
+    if (temp === tempY) throttle(moveY(deltaY), 50);
+  }
 }
 
 function overlayerTouch(direction, distance) {
@@ -317,7 +312,6 @@ function clearClipboard() {
 function copy() {
   const { data, selector } = this;
   data.copy();
-  data.copyToSystemClipboard();
   selector.showClipboard();
 }
 
@@ -590,6 +584,35 @@ function sheetInitEvents() {
       overlayerMousemove.call(this, evt);
     })
     .on('mousedown', (evt) => {
+      // If a formula cell is being edited and a left click is made,
+      // set that formula cell to start at the selected sheet cell and set a
+      // temporary mousemove event handler that updates said formula cell to
+      // end at the sheet cell currently being hovered over.
+      if (evt.buttons === 1 && evt.detail <= 1 && editor.formulaCellSelecting()) {
+        const { offsetX, offsetY } = evt;
+        const { ri, ci } = this.data.getCellRectByXY(offsetX, offsetY);
+        editor.formulaSelectCell(ri, ci);
+
+        const that = this;
+
+        let lastCellRect = { ri: null, ci: null };
+        mouseMoveUp(window, (e) => {
+          const cellRect = that.data.getCellRectByXY(e.offsetX, e.offsetY);
+
+          const hasRangeChanged = (cellRect.ri != lastCellRect.ri) || (cellRect.ci != lastCellRect.ci);
+          const isRangeValid = (cellRect.ri >= 0) && (cellRect.ci >= 0);
+
+          if (hasRangeChanged && isRangeValid) {
+            editor.formulaSelectCellRange(cellRect.ri, cellRect.ci);
+
+            lastCellRect.ri = cellRect.ri;
+            lastCellRect.ci = cellRect.ci;
+          }
+        }, () => { });
+
+        return;
+      }
+
       editor.clear();
       contextMenu.hide();
       // the left mouse button: mousedown → mouseup → click
@@ -616,11 +639,6 @@ function sheetInitEvents() {
       if (offsetY <= 0) colResizer.hide();
       if (offsetX <= 0) rowResizer.hide();
     });
-
-  selector.inputChange = (v) => {
-    dataSetCellText.call(this, v, 'input');
-    editorSet.call(this);
-  };
 
   // slide on mobile
   bindTouch(overlayerEl.el, {
@@ -689,23 +707,24 @@ function sheetInitEvents() {
       insertDeleteRowColumn.call(this, type);
     }
   };
+  window.xSheetFunctions = {};
 
-  bind(window, 'resize', () => {
+  bind(window, 'resize', window.xSheetFunctions.resize = () => {
     this.reload();
   });
 
-  bind(window, 'click', (evt) => {
+  bind(window, 'click', window.xSheetFunctions.click = (evt) => {
     this.focusing = overlayerEl.contains(evt.target);
   });
 
-  bind(window, 'paste', (evt) => {
+  bind(window, 'paste', window.xSheetFunctions.paste = (evt) => {
     if (!this.focusing) return;
     paste.call(this, 'all', evt);
     evt.preventDefault();
   });
 
   // for selector
-  bind(window, 'keydown', (evt) => {
+  bind(window, 'keydown', window.xSheetFunctions.keydown = (evt) => {
     if (!this.focusing) return;
     const keyCode = evt.keyCode || evt.which;
     const {
@@ -855,7 +874,7 @@ function sheetInitEvents() {
 
 export default class Sheet {
   constructor(targetEl, data) {
-    this.eventMap = createEventEmitter();
+    this.eventMap = new Map();
     const { view, showToolbar, showContextmenu } = data.settings;
     this.el = h('div', `${cssPrefix}-sheet`);
     this.toolbar = new Toolbar(data, view.width, !showToolbar);
@@ -871,10 +890,19 @@ export default class Sheet {
     this.verticalScrollbar = new Scrollbar(true);
     this.horizontalScrollbar = new Scrollbar(false);
     // editor
+    const formulaSuggestions = SUPPORTED_FORMULAS.map((formulaName) => {
+      const escapedFormulaName = formulaName.replace('.', '\\.');
+      return {
+        key: escapedFormulaName,
+        // Function that returns translation of the formula name if one exists,
+        // otherwise the formula name
+        title: () => t(`formula.${escapedFormulaName}`) || formulaName
+      };
+    });
     this.editor = new Editor(
-      formulas,
+      formulaSuggestions,
       () => this.getTableOffset(),
-      data.rows.height,
+      data,
     );
     // data validation
     this.modalValidation = new ModalValidation();
@@ -886,6 +914,7 @@ export default class Sheet {
       .children(
         this.editor.el,
         this.selector.el,
+        this.editor.cellEl,
       );
     this.overlayerEl = h('div', `${cssPrefix}-overlayer`)
       .child(this.overlayerCEl);
@@ -912,13 +941,15 @@ export default class Sheet {
   }
 
   on(eventName, func) {
-    this.eventMap.on(eventName, func);
+    this.eventMap.set(eventName, func);
     return this;
   }
 
   trigger(eventName, ...args) {
     const { eventMap } = this;
-    eventMap.fire(eventName, args);
+    if (eventMap.has(eventName)) {
+      eventMap.get(eventName).call(this, ...args);
+    }
   }
 
   resetData(data) {
@@ -928,6 +959,7 @@ export default class Sheet {
     this.data = data;
     verticalScrollbarSet.call(this);
     horizontalScrollbarSet.call(this);
+    this.editor.resetData(data);
     this.toolbar.resetData(data);
     this.print.resetData(data);
     this.selector.resetData(data);

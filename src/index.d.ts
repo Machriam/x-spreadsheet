@@ -1,20 +1,9 @@
 declare module 'x-data-spreadsheet' {
-  export interface ExtendToolbarOption {
-    tip?: string;
-    el?: HTMLElement;
-    icon?: string;
-    onClick?: (data: object, sheet: object) => void
-  }
   export interface Options {
     mode?: 'edit' | 'read';
     showToolbar?: boolean;
     showGrid?: boolean;
     showContextmenu?: boolean;
-    showBottomBar?: boolean;
-    extendToolbar?: {
-      left?: ExtendToolbarOption[],
-      right?: ExtendToolbarOption[],
-    };
     view?: {
       height: () => number;
       width: () => number;
@@ -56,18 +45,18 @@ declare module 'x-data-spreadsheet' {
     (
       envt: CELL_SELECTED,
       callback: (cell: Cell, rowIndex: number, colIndex: number) => void
-    ): void;
+    );
     (
       envt: CELLS_SELECTED,
       callback: (
         cell: Cell,
         parameters: { sri: number; sci: number; eri: number; eci: number }
       ) => void
-    ): void;
+    );
     (
       evnt: CELL_EDITED,
       callback: (text: string, rowIndex: number, colIndex: number) => void
-    ): void;
+    );
   }
 
   export interface ColProperties {
@@ -172,17 +161,17 @@ declare module 'x-data-spreadsheet' {
       colIndex: number,
       text: string,
       sheetIndex?: number
-    ): this;
+    ): string;
     /**
      * remove current sheet
      */
     deleteSheet(): void;
 
-    /**s
+    /**
      * load data
      * @param json
      */
-    loadData(json: Record<string, any>): this;
+    loadData(json: Record<string, any>): void;
     /**
      * get data
      */
@@ -191,13 +180,13 @@ declare module 'x-data-spreadsheet' {
      * bind handler to change event, including data change and user actions
      * @param callback
      */
-    change(callback: (json: Record<string, any>) => void): this;
+    change(callback: (json: Record<string, any>) => void);
     /**
      * set locale
      * @param lang
      * @param message
      */
-    static locale(lang: string, message: object): void;
+    locale(lang: string, message: string);
   }
   global {
     interface Window {

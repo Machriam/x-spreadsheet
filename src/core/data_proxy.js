@@ -77,7 +77,6 @@ const defaultSettings = {
   showGrid: true,
   showToolbar: true,
   showContextmenu: true,
-  showBottomBar: true,
   row: {
     len: 100,
     height: 25,
@@ -97,7 +96,7 @@ const defaultSettings = {
     underline: false,
     color: '#0a0a0a',
     font: {
-      name: 'Arial',
+      name: 'Courier New',
       size: 10,
       bold: false,
       italic: false,
@@ -110,13 +109,9 @@ const toolbarHeight = 41;
 const bottombarHeight = 41;
 
 
-// Utility functions
-const hasOwnProperty = (obj, name) => Object.prototype.hasOwnProperty.call(obj, name);
-
-
 // src: cellRange
 // dst: cellRange
-function canPaste(src, dst, error = () => {}) {
+function canPaste(src, dst, error = () => { }) {
   const { merges } = this;
   const cellRange = dst.clone();
   const [srn, scn] = src.size();
@@ -348,7 +343,7 @@ export default class DataProxy {
     this.history = new History();
     this.clipboard = new Clipboard();
     this.autoFilter = new AutoFilter();
-    this.change = () => {};
+    this.change = () => { };
     this.exceptRowSet = new Set();
     this.sortedRowMap = new Map();
     this.unsortedRowMap = new Map();
@@ -409,46 +404,12 @@ export default class DataProxy {
     this.clipboard.copy(this.selector.range);
   }
 
-  copyToSystemClipboard() {
-    /* global navigator */
-    if (navigator.clipboard === undefined) {
-      return;
-    }
-    let copyText = '';
-    const rowData = this.rows.getData();
-    for (let ri = this.selector.range.sri; ri <= this.selector.range.eri; ri += 1) {
-      if (hasOwnProperty(rowData, ri)) {
-        for (let ci = this.selector.range.sci; ci <= this.selector.range.eci; ci += 1) {
-          if (ci > this.selector.range.sci) {
-            copyText += '\t';
-          }
-          if (hasOwnProperty(rowData[ri].cells, ci)) {
-            const cellText = String(rowData[ri].cells[ci].text);
-            if ((cellText.indexOf(`\n`) === -1) && (cellText.indexOf(`\t`) === -1) && (cellText.indexOf(`"`) === -1)) {
-              copyText += cellText;
-            } else {
-              copyText += `"${cellText}"`;
-            }
-          }
-        }
-      } else {
-        for (let ci = this.selector.range.sci; ci <= this.selector.range.eci; ci += 1) {
-          copyText += '\t';
-        }
-      }
-      copyText += '\n';
-    }
-    navigator.clipboard.writeText(copyText).then(() => {}, (err) => {
-      console.log('text copy to the system clipboard error  ', copyText, err);
-    });
-  }
-
   cut() {
     this.clipboard.cut(this.selector.range);
   }
 
   // what: all | text | format
-  paste(what = 'all', error = () => {}) {
+  paste(what = 'all', error = () => { }) {
     // console.log('sIndexes:', sIndexes);
     const { clipboard, selector } = this;
     if (clipboard.isClear()) return false;
@@ -466,14 +427,15 @@ export default class DataProxy {
 
   pasteFromText(txt) {
     const lines = txt.split('\r\n').map(it => it.replace(/"/g, '').split('\t'));
-    if (lines.length > 0) lines.length -= 1;
+    if (lines.length > 0 &&
+      lines[lines.length - 1].reduce((a, v) => a += v ?? '').trim() == '') lines.length -= 1;
     const { rows, selector } = this;
     this.changeData(() => {
       rows.paste(lines, selector.range);
     });
   }
 
-  autofill(cellRange, what, error = () => {}) {
+  autofill(cellRange, what, error = () => { }) {
     const srcRange = this.selector.range;
     if (!canPaste.call(this, srcRange, cellRange, error)) return false;
     this.changeData(() => {
@@ -499,9 +461,9 @@ export default class DataProxy {
     if (ri < 0) nri = rows.len - 1;
     if (ci < 0) nci = cols.len - 1;
     if (nri > cri) [sri, eri] = [cri, nri];
-    else [sri, eri] = [nri, cri];
+    else[sri, eri] = [nri, cri];
     if (nci > cci) [sci, eci] = [cci, nci];
-    else [sci, eci] = [nci, cci];
+    else[sci, eci] = [nci, cci];
     selector.range = merges.union(new CellRange(
       sri, sci, eri, eci,
     ));
@@ -817,6 +779,13 @@ export default class DataProxy {
 
   deleteCell(what = 'all') {
     const { selector } = this;
+    let allEditable = true;
+    const context = this;
+    selector.range.each((ri, ci) => {
+      const cell = context.getCell(ri, ci);
+      allEditable = allEditable && (cell == null || cell.editable == null || cell.editable === true);
+    });
+    if (!allEditable) return;
     this.changeData(() => {
       this.rows.deleteCells(selector.range, what);
       if (what === 'all' || what === 'format') {
@@ -1017,11 +986,9 @@ export default class DataProxy {
   }
 
   viewHeight() {
-    const { view, showToolbar, showBottomBar } = this.settings;
+    const { view, showToolbar } = this.settings;
     let h = view.height();
-    if (showBottomBar) {
-      h -= bottombarHeight;
-    }
+    h -= bottombarHeight;
     if (showToolbar) {
       h -= toolbarHeight;
     }
