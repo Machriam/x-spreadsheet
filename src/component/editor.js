@@ -8,7 +8,8 @@ import Formula from './formula';
 import { setCaretPosition, saveCaretPosition } from '../core/caret';
 
 function insertText({ target }, itxt) {
-  const { value, selectionEnd } = target;
+  const value = target.innerHTML;
+  const selectionEnd = window.getSelection().anchorOffset;
   const ntxt = `${value.slice(0, selectionEnd)}${itxt}${value.slice(selectionEnd)}`;
   target.value = ntxt;
   this.inputText = ntxt;
