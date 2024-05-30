@@ -31,7 +31,7 @@ function inputEventHandler() {
   // save caret position
   const restore = saveCaretPosition(this.textEl.el);
 
-  const text = this.textEl.el.textContent;
+  const text = this.textEl.el.innerText;
   this.inputText = text;
   // console.log(evt, 'v:', v);
 
